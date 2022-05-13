@@ -1,0 +1,67 @@
+version: '3.7'
+
+x-logging:
+    &json-logging
+    driver: json-file
+    options:
+        max-size: "1m"
+        max-file: "3"
+
+services:
+    database:
+        image: linuxserver/mariadb:10.5.15
+        container_name: database
+        volumes:
+            - db_data:/var/lib/mysql
+            - ./database/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+        env_file:
+            - ./env_files/db.env
+        environment:
+            - TZ=Asia/Tokyo
+        networks:
+            - backend
+        expose:
+            - 3306
+        restart: always
+        logging: *json-logging
+
+    web_server:
+        build:
+            context: ./web_server
+            dockerfile: Dockerfile
+            args:
+                TZ: 'Asia/Tokyo'
+        image: custom_django
+        container_name: web_server
+        env_file:
+            - ./env_files/django.env
+        environment:
+            # DJANGO_APP_ENV: development, staging, production
+            - DJANGO_APP_ENV=development
+            # EXECUTION_TYPE: uwsgi, runserver
+            - EXECUTION_TYPE=uwsgi
+            - LANGUAGE_CODE=ja
+            - TZ=Asia/Tokyo
+            - DB_HOST=database
+            - DB_PORT=3306
+        volumes:
+            - ./web_server/src:/code
+            - ./web_server/uwsgi.ini:/uwsgi.ini:ro
+        networks:
+            - frontend
+            - backend
+        ports:
+            - 3000:8000
+        restart: always
+        logging: *json-logging
+
+
+networks:
+    frontend:
+        name: frontend_network
+    backend:
+        name: backend_network
+
+volumes:
+    db_data:
+        name: database
