@@ -54,6 +54,9 @@ services:
             - 3000:8000
         restart: always
         logging: *json-logging
+        depends_on:
+            - database
+
 
 
 networks:
